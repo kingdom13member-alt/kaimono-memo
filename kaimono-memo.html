@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>かいものメモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EFF4EE;
+    --surface: #FFFFFF;
+    --ink: #26362A;
+    --ink-soft: #5B6B5E;
+    --accent: #4F7A52;
+    --accent-soft: #DCEBDC;
+    --accent2: #D99B2B;
+    --line: #D4DECF;
+    --done-bg: #F3F1E9;
+    --done-ink: #9AA394;
+    --danger: #B0503F;
+    --shadow: none;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #182018;
+      --surface: #212B21;
+      --ink: #E7EEE5;
+      --ink-soft: #9CAA98;
+      --accent: #7FB07F;
+      --accent-soft: #2A3B2A;
+      --accent2: #E3B457;
+      --line: #34412F;
+      --done-bg: #202620;
+      --done-ink: #64705F;
+      --danger: #D98A78;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #182018;
+    --surface: #212B21;
+    --ink: #E7EEE5;
+    --ink-soft: #9CAA98;
+    --accent: #7FB07F;
+    --accent-soft: #2A3B2A;
+    --accent2: #E3B457;
+    --line: #34412F;
+    --done-bg: #202620;
+    --done-ink: #64705F;
+    --danger: #D98A78;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans JP", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 20px 16px 100px;
+  }
+  header {
+    padding: 4px 2px 18px;
+  }
+  h1 {
+    font-family: "Zen Maru Gothic", sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    margin: 0 0 4px;
+    letter-spacing: 0.02em;
+  }
+  .sub {
+    color: var(--ink-soft);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  nav.tabs {
+    display: flex;
+    gap: 6px;
+    margin: 18px 0 20px;
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 4px;
+  }
+  nav.tabs button {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 8px;
+    border-radius: 999px;
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background .18s ease, color .18s ease;
+  }
+  nav.tabs button.active {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .addrow {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .addrow input[type=text] {
+    flex: 1;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .addrow input[type=text]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .addrow button {
+    border: none;
+    background: var(--accent);
+    color: white;
+    border-radius: 10px;
+    padding: 0 18px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: "Noto Sans JP", sans-serif;
+  }
+  .addrow button:active { transform: scale(0.97); }
+
+  .section-label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    letter-spacing: .04em;
+    margin: 22px 0 8px 2px;
+  }
+  .section-label:first-of-type { margin-top: 0; }
+
+  ul.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--surface);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  ul.list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    user-select: none;
+  }
+  ul.list li:last-child { border-bottom: none; }
+
+  .check {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    border: 2px solid var(--line);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .check svg { opacity: 0; transition: opacity .15s ease; width: 14px; height: 14px; }
+  li.checked .check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  li.checked .check svg { opacity: 1; }
+
+  .item-name {
+    flex: 1;
+    font-size: 15.5px;
+  }
+  li.checked .item-name {
+    color: var(--done-ink);
+    text-decoration: line-through;
+  }
+
+  .del {
+    color: var(--ink-soft);
+    font-size: 18px;
+    padding: 4px 6px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .del:hover, .del:active { color: var(--danger); }
+
+  .empty {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 14px;
+    padding: 32px 16px;
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px dashed var(--line);
+  }
+
+  .primary-btn {
+    display: block;
+    width: 100%;
+    border: none;
+    background: var(--accent);
+    color: white;
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 700;
+    font-size: 15.5px;
+    padding: 14px;
+    border-radius: 12px;
+    margin-top: 18px;
+    cursor: pointer;
+  }
+  .primary-btn:active { transform: scale(0.985); }
+  .primary-btn.secondary {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--line);
+  }
+
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--accent2);
+    color: #362702;
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  .shop-empty {
+    text-align: center;
+    padding: 46px 20px;
+  }
+  .shop-empty .big { font-size: 40px; margin-bottom: 10px; }
+  .shop-empty p { color: var(--ink-soft); font-size: 14px; margin: 0 0 4px; }
+
+  footer.hint {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    margin-top: 26px;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>かいものメモ</h1>
+    <p class="sub">よく買うものを登録して、買い出し中はタップでチェック。</p>
+  </header>
+
+  <nav class="tabs">
+    <button id="tabCatalogBtn" class="active" onclick="switchTab('catalog')">品物一覧</button>
+    <button id="tabShopBtn" onclick="switchTab('shop')">買い出し中<span class="count-badge" id="shopBadge" style="display:none">0</span></button>
+  </nav>
+
+  <!-- CATALOG PANEL -->
+  <section class="panel active" id="panel-catalog">
+    <div class="addrow">
+      <input type="text" id="catalogInput" placeholder="品物を登録（例: 牛乳）" maxlength="40">
+      <button onclick="addCatalogItem()">追加</button>
+    </div>
+
+    <div class="section-label">タップして買い出しリストに入れる</div>
+    <ul class="list" id="catalogList"></ul>
+    <div class="empty" id="catalogEmpty" style="display:none">まだ登録した品物がありません。<br>上の欄から追加してください。</div>
+
+    <button class="primary-btn" onclick="sendToShopList()">選んだものを買い出しリストへ</button>
+  </section>
+
+  <!-- SHOPPING PANEL -->
+  <section class="panel" id="panel-shop">
+    <div class="addrow">
+      <input type="text" id="shopInput" placeholder="リストにない物を追加" maxlength="40">
+      <button onclick="addShopItem()">追加</button>
+    </div>
+
+    <div id="shopContent"></div>
+
+    <div id="shopActions" style="display:none">
+      <button class="primary-btn" onclick="finishShopping()">買い物を終了する</button>
+      <button class="primary-btn secondary" onclick="clearShopList()">リストを空にする</button>
+    </div>
+  </section>
+
+  <footer class="hint">データはこの端末のブラウザに保存されます。</footer>
+</div>
+
+<script>
+const STORAGE_KEY = 'kaimono-memo-v1';
+
+let state = { catalog: [], shop: [] };
+// catalog item: {id, name, selected}
+// shop item: {id, name, bought}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.catalog) && Array.isArray(parsed.shop)) {
+        state = parsed;
+        return;
+      }
+    }
+  } catch (e) { console.error('load failed', e); }
+  // default starter items on first run
+  state = {
+    catalog: [
+      { id: uid(), name: '牛乳', selected: false },
+      { id: uid(), name: '卵', selected: false },
+      { id: uid(), name: '食パン', selected: false },
+    ],
+    shop: []
+  };
+}
+
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) { console.error('save failed', e); }
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function switchTab(tab) {
+  document.getElementById('panel-catalog').classList.toggle('active', tab === 'catalog');
+  document.getElementById('panel-shop').classList.toggle('active', tab === 'shop');
+  document.getElementById('tabCatalogBtn').classList.toggle('active', tab === 'catalog');
+  document.getElementById('tabShopBtn').classList.toggle('active', tab === 'shop');
+}
+
+function checkIcon() {
+  return '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+function renderCatalog() {
+  const ul = document.getElementById('catalogList');
+  const empty = document.getElementById('catalogEmpty');
+  ul.innerHTML = '';
+  if (state.catalog.length === 0) {
+    ul.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  ul.style.display = 'block';
+  empty.style.display = 'none';
+
+  state.catalog.forEach(item => {
+    const li = document.createElement('li');
+    li.className = item.selected ? 'checked' : '';
+    li.onclick = (e) => {
+      if (e.target.closest('.del')) return;
+      item.selected = !item.selected;
+      save();
+      renderCatalog();
+    };
+    li.innerHTML = `
+      <span class="check">${checkIcon()}</span>
+      <span class="item-name">${escapeHtml(item.name)}</span>
+      <button class="del" title="削除" onclick="deleteCatalogItem('${item.id}')">×</button>
+    `;
+    ul.appendChild(li);
+  });
+}
+
+function deleteCatalogItem(id) {
+  state.catalog = state.catalog.filter(i => i.id !== id);
+  save();
+  renderCatalog();
+}
+
+function addCatalogItem() {
+  const input = document.getElementById('catalogInput');
+  const name = input.value.trim();
+  if (!name) return;
+  state.catalog.push({ id: uid(), name, selected: false });
+  input.value = '';
+  save();
+  renderCatalog();
+  input.focus();
+}
+
+function sendToShopList() {
+  const chosen = state.catalog.filter(i => i.selected);
+  if (chosen.length === 0) return;
+  chosen.forEach(c => {
+    // avoid duplicate names already in shop list
+    if (!state.shop.some(s => s.name === c.name && !s.bought)) {
+      state.shop.push({ id: uid(), name: c.name, bought: false });
+    }
+    c.selected = false;
+  });
+  save();
+  renderCatalog();
+  renderShop();
+  switchTab('shop');
+}
+
+function renderShop() {
+  const content = document.getElementById('shopContent');
+  const actions = document.getElementById('shopActions');
+  const badge = document.getElementById('shopBadge');
+  content.innerHTML = '';
+
+  const toBuy = state.shop.filter(i => !i.bought);
+  const bought = state.shop.filter(i => i.bought);
+
+  if (toBuy.length) badge.style.display = 'inline-flex', badge.textContent = toBuy.length;
+  else badge.style.display = 'none';
+
+  if (state.shop.length === 0) {
+    content.innerHTML = `
+      <div class="shop-empty">
+        <div class="big">🛒</div>
+        <p>買い出しリストは空です。</p>
+        <p>「品物一覧」から買うものを選ぶか、上の欄から直接追加してください。</p>
+      </div>`;
+    actions.style.display = 'none';
+    return;
+  }
+
+  actions.style.display = 'block';
+
+  if (toBuy.length) {
+    const label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'これから買うもの';
+    content.appendChild(label);
+
+    const ul = document.createElement('ul');
+    ul.className = 'list';
+    toBuy.forEach(item => ul.appendChild(shopRow(item)));
+    content.appendChild(ul);
+  }
+
+  if (bought.length) {
+    const label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'カゴに入れたもの';
+    content.appendChild(label);
+
+    const ul = document.createElement('ul');
+    ul.className = 'list';
+    bought.forEach(item => ul.appendChild(shopRow(item)));
+    content.appendChild(ul);
+  }
+}
+
+function shopRow(item) {
+  const li = document.createElement('li');
+  li.className = item.bought ? 'checked' : '';
+  li.onclick = (e) => {
+    if (e.target.closest('.del')) return;
+    item.bought = !item.bought;
+    save();
+    renderShop();
+  };
+  li.innerHTML = `
+    <span class="check">${checkIcon()}</span>
+    <span class="item-name">${escapeHtml(item.name)}</span>
+    <button class="del" title="削除" onclick="deleteShopItem('${item.id}')">×</button>
+  `;
+  return li;
+}
+
+function deleteShopItem(id) {
+  state.shop = state.shop.filter(i => i.id !== id);
+  save();
+  renderShop();
+}
+
+function addShopItem() {
+  const input = document.getElementById('shopInput');
+  const name = input.value.trim();
+  if (!name) return;
+  state.shop.push({ id: uid(), name, bought: false });
+  input.value = '';
+  save();
+  renderShop();
+  input.focus();
+}
+
+function finishShopping() {
+  state.shop = [];
+  save();
+  renderShop();
+  switchTab('catalog');
+}
+
+function clearShopList() {
+  state.shop = [];
+  save();
+  renderShop();
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+['catalogInput', 'shopInput'].forEach(id => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById(id);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        id === 'catalogInput' ? addCatalogItem() : addShopItem();
+      }
+    });
+  });
+});
+
+load();
+renderCatalog();
+renderShop();
+</script>
+</body>
+</html>
