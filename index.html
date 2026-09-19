@@ -293,6 +293,10 @@
       <button onclick="addCatalogItem()">追加</button>
     </div>
 
+    <div class="addrow" id="catalogSearchRow" style="display:none">
+      <input type="text" id="catalogSearch" placeholder="🔍 品物を検索" oninput="renderCatalog()">
+    </div>
+
     <div class="section-label">タップして買い出しリストに入れる</div>
     <ul class="list" id="catalogList"></ul>
     <div class="empty" id="catalogEmpty" style="display:none">まだ登録した品物がありません。<br>上の欄から追加してください。</div>
@@ -371,16 +375,37 @@ function checkIcon() {
 function renderCatalog() {
   const ul = document.getElementById('catalogList');
   const empty = document.getElementById('catalogEmpty');
+  const searchRow = document.getElementById('catalogSearchRow');
+  const searchInput = document.getElementById('catalogSearch');
   ul.innerHTML = '';
+
   if (state.catalog.length === 0) {
     ul.style.display = 'none';
     empty.style.display = 'block';
+    searchRow.style.display = 'none';
     return;
   }
   ul.style.display = 'block';
   empty.style.display = 'none';
 
-  state.catalog.forEach(item => {
+  // show search box once the catalog gets long enough to be worth searching
+  searchRow.style.display = state.catalog.length > 6 ? 'flex' : 'none';
+
+  const term = (searchInput && searchInput.value || '').trim().toLowerCase();
+  const visible = term
+    ? state.catalog.filter(i => i.name.toLowerCase().includes(term))
+    : state.catalog;
+
+  if (term && visible.length === 0) {
+    empty.textContent = '一致する品物が見つかりません。';
+    empty.style.display = 'block';
+    ul.style.display = 'none';
+    return;
+  } else {
+    empty.textContent = 'まだ登録した品物がありません。上の欄から追加してください。';
+  }
+
+  visible.forEach(item => {
     const li = document.createElement('li');
     li.className = item.selected ? 'checked' : '';
     li.onclick = (e) => {
