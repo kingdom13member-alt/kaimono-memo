@@ -188,6 +188,23 @@
     font-weight: 700;
   }
 
+  .tag-chip-wrap {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .tag-edit-btn {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 12px;
+    padding: 6px 6px 6px 3px;
+    cursor: pointer;
+    opacity: .6;
+  }
+  .tag-edit-btn:active { opacity: 1; color: var(--accent); }
+
   .item-tag {
     flex-shrink: 0;
     font-size: 11px;
@@ -512,6 +529,21 @@ function renderTagSelect() {
   };
 }
 
+function renameTag(oldTag) {
+  const newName = (prompt(`「${oldTag}」の新しい名前を入力してください`, oldTag) || '').trim();
+  if (!newName || newName === oldTag) return;
+  if (state.tags.includes(newName)) {
+    alert('そのタグ名はすでに使われています。');
+    return;
+  }
+  const idx = state.tags.indexOf(oldTag);
+  if (idx !== -1) state.tags[idx] = newName;
+  state.catalog.forEach(i => { if (i.tag === oldTag) i.tag = newName; });
+  if (currentFilterTag === oldTag) currentFilterTag = newName;
+  save();
+  renderCatalog();
+}
+
 function renderTagFilter() {
   const row = document.getElementById('tagFilterRow');
   row.innerHTML = '';
@@ -530,7 +562,18 @@ function renderTagFilter() {
   row.appendChild(makeChip('すべて', 'all'));
   state.tags.forEach(tag => {
     const count = state.catalog.filter(i => i.tag === tag).length;
-    row.appendChild(makeChip(`${tag} (${count})`, tag));
+    const wrap = document.createElement('span');
+    wrap.className = 'tag-chip-wrap';
+    wrap.appendChild(makeChip(`${tag} (${count})`, tag));
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'tag-edit-btn';
+    editBtn.title = 'タグ名を変更';
+    editBtn.textContent = '✎';
+    editBtn.onclick = (e) => { e.stopPropagation(); renameTag(tag); };
+    wrap.appendChild(editBtn);
+
+    row.appendChild(wrap);
   });
 }
 
@@ -810,3 +853,4 @@ renderShop();
 </script>
 </body>
 </html>
+
