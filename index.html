@@ -219,6 +219,25 @@
   }
   li.checked .item-tag-select { opacity: .55; }
 
+  .reorder {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+  .reorder button {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 5px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .reorder button:active { color: var(--accent); }
+  .reorder button:disabled { opacity: .2; cursor: default; }
+
   .section-label {
     font-size: 12px;
     color: var(--ink-soft);
@@ -529,16 +548,40 @@ function changeItemTag(id, newTag) {
   renderCatalog();
 }
 
-function makeItemRow(item) {
+function moveItem(id, direction) {
+  const idx = state.catalog.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  const item = state.catalog[idx];
+  let swapIdx = -1;
+  if (direction === 'up') {
+    for (let j = idx - 1; j >= 0; j--) {
+      if (state.catalog[j].tag === item.tag) { swapIdx = j; break; }
+    }
+  } else {
+    for (let j = idx + 1; j < state.catalog.length; j++) {
+      if (state.catalog[j].tag === item.tag) { swapIdx = j; break; }
+    }
+  }
+  if (swapIdx === -1) return;
+  [state.catalog[idx], state.catalog[swapIdx]] = [state.catalog[swapIdx], state.catalog[idx]];
+  save();
+  renderCatalog();
+}
+
+function makeItemRow(item, isFirst, isLast) {
   const li = document.createElement('li');
   li.className = item.selected ? 'checked' : '';
   li.onclick = (e) => {
-    if (e.target.closest('.del') || e.target.closest('.item-tag-select')) return;
+    if (e.target.closest('.del') || e.target.closest('.item-tag-select') || e.target.closest('.reorder')) return;
     item.selected = !item.selected;
     save();
     renderCatalog();
   };
   li.innerHTML = `
+    <span class="reorder">
+      <button title="上へ" onclick="event.stopPropagation(); moveItem('${item.id}', 'up')" ${isFirst ? 'disabled' : ''}>▲</button>
+      <button title="下へ" onclick="event.stopPropagation(); moveItem('${item.id}', 'down')" ${isLast ? 'disabled' : ''}>▼</button>
+    </span>
     <span class="check">${checkIcon()}</span>
     <span class="item-name">${escapeHtml(item.name)}</span>
     <select class="item-tag-select" onchange="changeItemTag('${item.id}', this.value)" onclick="event.stopPropagation()">
@@ -587,7 +630,7 @@ function renderCatalog() {
 
       const ul = document.createElement('ul');
       ul.className = 'list';
-      items.forEach(item => ul.appendChild(makeItemRow(item)));
+      items.forEach((item, idx) => ul.appendChild(makeItemRow(item, idx === 0, idx === items.length - 1)));
       groups.appendChild(ul);
     });
   } else {
@@ -596,7 +639,7 @@ function renderCatalog() {
     if (items.length) {
       const ul = document.createElement('ul');
       ul.className = 'list';
-      items.forEach(item => ul.appendChild(makeItemRow(item)));
+      items.forEach((item, idx) => ul.appendChild(makeItemRow(item, idx === 0, idx === items.length - 1)));
       groups.appendChild(ul);
     }
   }
