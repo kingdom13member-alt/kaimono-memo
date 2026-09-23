@@ -144,117 +144,6 @@
   }
   .addrow button:active { transform: scale(0.97); }
 
-  .tag-select {
-    flex: 1;
-    border: 1.5px solid var(--line);
-    background: var(--surface);
-    color: var(--ink);
-    border-radius: 10px;
-    padding: 11px 13px;
-    font-size: 15px;
-    font-family: inherit;
-  }
-  .tag-select:focus {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-  }
-
-  .tag-filter {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 2px 2px 10px;
-    margin-bottom: 6px;
-    -webkit-overflow-scrolling: touch;
-  }
-  .tag-filter::-webkit-scrollbar { display: none; }
-  .tag-chip {
-    flex-shrink: 0;
-    border: 1.5px solid var(--line);
-    background: var(--surface);
-    color: var(--ink-soft);
-    border-radius: 999px;
-    padding: 7px 14px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    font-family: "Noto Sans JP", sans-serif;
-  }
-  .tag-chip.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-    font-weight: 700;
-  }
-
-  .tag-chip-wrap {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-  .tag-edit-btn {
-    flex-shrink: 0;
-    border: none;
-    background: none;
-    color: var(--ink-soft);
-    font-size: 12px;
-    padding: 6px 6px 6px 3px;
-    cursor: pointer;
-    opacity: .6;
-  }
-  .tag-edit-btn:active { opacity: 1; color: var(--accent); }
-
-  .item-tag {
-    flex-shrink: 0;
-    font-size: 11px;
-    color: var(--ink-soft);
-    background: var(--accent-soft);
-    border-radius: 999px;
-    padding: 3px 9px;
-    font-weight: 500;
-    margin-right: 2px;
-  }
-  li.checked .item-tag { opacity: .55; }
-
-  .item-tag-select {
-    flex-shrink: 0;
-    font-size: 11.5px;
-    color: var(--ink-soft);
-    background: var(--accent-soft);
-    border: none;
-    border-radius: 999px;
-    padding: 5px 20px 5px 10px;
-    font-weight: 500;
-    font-family: "Noto Sans JP", sans-serif;
-    -webkit-appearance: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235B6B5E' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 7px center;
-    background-size: 9px 6px;
-  }
-  li.checked .item-tag-select { opacity: .55; }
-
-  .reorder {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    flex-shrink: 0;
-  }
-  .reorder button {
-    border: none;
-    background: none;
-    color: var(--ink-soft);
-    font-size: 10px;
-    line-height: 1;
-    padding: 3px 5px;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  .reorder button:active { color: var(--accent); }
-  .reorder button:disabled { opacity: .2; cursor: default; }
-
   .section-label {
     font-size: 12px;
     color: var(--ink-soft);
@@ -386,6 +275,7 @@
 </style>
 </head>
 <body>
+<script id="state-data" type="application/json">{"catalog":[],"shop":[]}</script>
 <div class="app">
   <header>
     <h1>かいものメモ</h1>
@@ -401,20 +291,11 @@
   <section class="panel active" id="panel-catalog">
     <div class="addrow">
       <input type="text" id="catalogInput" placeholder="品物を登録（例: 牛乳）" maxlength="40">
-    </div>
-    <div class="addrow">
-      <select id="catalogTagSelect" class="tag-select"></select>
       <button onclick="addCatalogItem()">追加</button>
     </div>
 
-    <div class="addrow" id="catalogSearchRow" style="display:none">
-      <input type="text" id="catalogSearch" placeholder="🔍 品物を検索" oninput="renderCatalog()">
-    </div>
-
-    <div class="tag-filter" id="tagFilterRow"></div>
-
-    <div class="section-label" id="catalogSectionLabel">タップして買い出しリストに入れる</div>
-    <div id="catalogGroups"></div>
+    <div class="section-label">タップして買い出しリストに入れる</div>
+    <ul class="list" id="catalogList"></ul>
     <div class="empty" id="catalogEmpty" style="display:none">まだ登録した品物がありません。<br>上の欄から追加してください。</div>
 
     <button class="primary-btn" onclick="sendToShopList()">選んだものを買い出しリストへ</button>
@@ -435,50 +316,87 @@
     </div>
   </section>
 
-  <footer class="hint">データはこの端末のブラウザに保存されます。</footer>
+  <footer class="hint" id="syncHint">データはこのメモ自体に保存されます。どの端末・ブラウザから開いても同じリストが表示されます。</footer>
 </div>
 
 <script>
 const STORAGE_KEY = 'kaimono-memo-v1';
-const DEFAULT_TAGS = ['肉', '魚', '野菜', '調味料', '冷凍', '豆腐類', 'その他'];
 
-let state = { catalog: [], shop: [], tags: [] };
-let currentFilterTag = 'all';
-// catalog item: {id, name, selected, tag}
+let state = { catalog: [], shop: [] };
+// catalog item: {id, name, selected}
 // shop item: {id, name, bought}
 
+let artifactApi = null;   // capability namespace once resolved
+let savePending = false;
+let saveAgain = false;
+
 function load() {
+  // Prefer the state embedded in this published version (the source of truth
+  // across devices/browsers). Fall back to this browser's local copy only if
+  // that's missing, so a first-ever load isn't empty.
+  try {
+    const raw = document.getElementById('state-data').textContent;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.catalog) && Array.isArray(parsed.shop) &&
+        (parsed.catalog.length || parsed.shop.length)) {
+      state = parsed;
+      return;
+    }
+  } catch (e) { console.error('embedded state read failed', e); }
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.catalog) && Array.isArray(parsed.shop)) {
         state = parsed;
-        if (!Array.isArray(state.tags) || state.tags.length === 0) {
-          state.tags = DEFAULT_TAGS.slice();
-        }
-        // migrate items saved before tags existed
-        state.catalog.forEach(i => { if (!i.tag) i.tag = 'その他'; });
         return;
       }
     }
-  } catch (e) { console.error('load failed', e); }
+  } catch (e) { console.error('local load failed', e); }
+
   // default starter items on first run
   state = {
-    tags: DEFAULT_TAGS.slice(),
     catalog: [
-      { id: uid(), name: '牛乳', selected: false, tag: 'その他' },
-      { id: uid(), name: '卵', selected: false, tag: 'その他' },
-      { id: uid(), name: '食パン', selected: false, tag: 'その他' },
+      { id: uid(), name: '牛乳', selected: false },
+      { id: uid(), name: '卵', selected: false },
+      { id: uid(), name: '食パン', selected: false },
     ],
     shop: []
   };
 }
 
-function save() {
+async function initCapability() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) { console.error('save failed', e); }
+    artifactApi = (window.claude && (await window.claude.use('artifact'))) || null;
+  } catch (e) { artifactApi = null; }
+  const hint = document.getElementById('syncHint');
+  if (!artifactApi && hint) {
+    hint.textContent = 'データはこの端末のブラウザにのみ保存されます（同期は現在利用できません）。';
+  }
+}
+
+function save() {
+  // always keep a same-browser fallback copy
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { console.error('local save failed', e); }
+  syncToArtifact();
+}
+
+async function syncToArtifact() {
+  if (!artifactApi) return;
+  if (savePending) { saveAgain = true; return; }
+  savePending = true;
+  try {
+    const dataEl = document.getElementById('state-data');
+    if (dataEl) dataEl.textContent = JSON.stringify(state);
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    await artifactApi.publish(html);
+  } catch (e) {
+    console.error('publish failed', e);
+  } finally {
+    savePending = false;
+    if (saveAgain) { saveAgain = false; syncToArtifact(); }
+  }
 }
 
 function uid() {
@@ -496,205 +414,34 @@ function checkIcon() {
   return '<svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.2 11.5L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
-function renderTagSelect() {
-  const sel = document.getElementById('catalogTagSelect');
-  const prevValue = sel.value;
-  sel.innerHTML = '';
-  state.tags.forEach(tag => {
-    const opt = document.createElement('option');
-    opt.value = tag;
-    opt.textContent = tag;
-    sel.appendChild(opt);
-  });
-  const newOpt = document.createElement('option');
-  newOpt.value = '__new__';
-  newOpt.textContent = '＋ 新しいタグを追加';
-  sel.appendChild(newOpt);
-
-  if (state.tags.includes(prevValue)) sel.value = prevValue;
-
-  sel.onchange = () => {
-    if (sel.value === '__new__') {
-      const name = (prompt('新しいタグ名を入力してください') || '').trim();
-      if (name && !state.tags.includes(name)) {
-        state.tags.push(name);
-        save();
-        renderTagSelect();
-        renderTagFilter();
-        sel.value = name;
-      } else {
-        sel.value = state.tags[0] || '';
-      }
-    }
-  };
-}
-
-function renameTag(oldTag) {
-  const newName = (prompt(`「${oldTag}」の新しい名前を入力してください`, oldTag) || '').trim();
-  if (!newName || newName === oldTag) return;
-  if (state.tags.includes(newName)) {
-    alert('そのタグ名はすでに使われています。');
+function renderCatalog() {
+  const ul = document.getElementById('catalogList');
+  const empty = document.getElementById('catalogEmpty');
+  ul.innerHTML = '';
+  if (state.catalog.length === 0) {
+    ul.style.display = 'none';
+    empty.style.display = 'block';
     return;
   }
-  const idx = state.tags.indexOf(oldTag);
-  if (idx !== -1) state.tags[idx] = newName;
-  state.catalog.forEach(i => { if (i.tag === oldTag) i.tag = newName; });
-  if (currentFilterTag === oldTag) currentFilterTag = newName;
-  save();
-  renderCatalog();
-}
+  ul.style.display = 'block';
+  empty.style.display = 'none';
 
-function renderTagFilter() {
-  const row = document.getElementById('tagFilterRow');
-  row.innerHTML = '';
-
-  const makeChip = (label, value) => {
-    const btn = document.createElement('button');
-    btn.className = 'tag-chip' + (currentFilterTag === value ? ' active' : '');
-    btn.textContent = label;
-    btn.onclick = () => {
-      currentFilterTag = value;
+  state.catalog.forEach(item => {
+    const li = document.createElement('li');
+    li.className = item.selected ? 'checked' : '';
+    li.onclick = (e) => {
+      if (e.target.closest('.del')) return;
+      item.selected = !item.selected;
+      save();
       renderCatalog();
     };
-    return btn;
-  };
-
-  row.appendChild(makeChip('すべて', 'all'));
-  state.tags.forEach(tag => {
-    const count = state.catalog.filter(i => i.tag === tag).length;
-    const wrap = document.createElement('span');
-    wrap.className = 'tag-chip-wrap';
-    wrap.appendChild(makeChip(`${tag} (${count})`, tag));
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'tag-edit-btn';
-    editBtn.title = 'タグ名を変更';
-    editBtn.textContent = '✎';
-    editBtn.onclick = (e) => { e.stopPropagation(); renameTag(tag); };
-    wrap.appendChild(editBtn);
-
-    row.appendChild(wrap);
+    li.innerHTML = `
+      <span class="check">${checkIcon()}</span>
+      <span class="item-name">${escapeHtml(item.name)}</span>
+      <button class="del" title="削除" onclick="deleteCatalogItem('${item.id}')">×</button>
+    `;
+    ul.appendChild(li);
   });
-}
-
-function tagOptionsHtml(selectedTag) {
-  return state.tags.map(tag =>
-    `<option value="${escapeHtml(tag)}"${tag === selectedTag ? ' selected' : ''}>${escapeHtml(tag)}</option>`
-  ).join('');
-}
-
-function changeItemTag(id, newTag) {
-  const item = state.catalog.find(i => i.id === id);
-  if (!item) return;
-  item.tag = newTag;
-  save();
-  renderCatalog();
-}
-
-function moveItem(id, direction) {
-  const idx = state.catalog.findIndex(i => i.id === id);
-  if (idx === -1) return;
-  const item = state.catalog[idx];
-  let swapIdx = -1;
-  if (direction === 'up') {
-    for (let j = idx - 1; j >= 0; j--) {
-      if (state.catalog[j].tag === item.tag) { swapIdx = j; break; }
-    }
-  } else {
-    for (let j = idx + 1; j < state.catalog.length; j++) {
-      if (state.catalog[j].tag === item.tag) { swapIdx = j; break; }
-    }
-  }
-  if (swapIdx === -1) return;
-  [state.catalog[idx], state.catalog[swapIdx]] = [state.catalog[swapIdx], state.catalog[idx]];
-  save();
-  renderCatalog();
-}
-
-function makeItemRow(item, isFirst, isLast) {
-  const li = document.createElement('li');
-  li.className = item.selected ? 'checked' : '';
-  li.onclick = (e) => {
-    if (e.target.closest('.del') || e.target.closest('.item-tag-select') || e.target.closest('.reorder')) return;
-    item.selected = !item.selected;
-    save();
-    renderCatalog();
-  };
-  li.innerHTML = `
-    <span class="reorder">
-      <button title="上へ" onclick="event.stopPropagation(); moveItem('${item.id}', 'up')" ${isFirst ? 'disabled' : ''}>▲</button>
-      <button title="下へ" onclick="event.stopPropagation(); moveItem('${item.id}', 'down')" ${isLast ? 'disabled' : ''}>▼</button>
-    </span>
-    <span class="check">${checkIcon()}</span>
-    <span class="item-name">${escapeHtml(item.name)}</span>
-    <select class="item-tag-select" onchange="changeItemTag('${item.id}', this.value)" onclick="event.stopPropagation()">
-      ${tagOptionsHtml(item.tag)}
-    </select>
-    <button class="del" title="削除" onclick="deleteCatalogItem('${item.id}')">×</button>
-  `;
-  return li;
-}
-
-function renderCatalog() {
-  renderTagSelect();
-  renderTagFilter();
-
-  const groups = document.getElementById('catalogGroups');
-  const empty = document.getElementById('catalogEmpty');
-  const searchRow = document.getElementById('catalogSearchRow');
-  const searchInput = document.getElementById('catalogSearch');
-  groups.innerHTML = '';
-
-  if (state.catalog.length === 0) {
-    groups.style.display = 'none';
-    empty.style.display = 'block';
-    searchRow.style.display = 'none';
-    empty.textContent = 'まだ登録した品物がありません。上の欄から追加してください。';
-    return;
-  }
-
-  searchRow.style.display = state.catalog.length > 6 ? 'flex' : 'none';
-  const term = (searchInput && searchInput.value || '').trim().toLowerCase();
-
-  const matches = i => !term || i.name.toLowerCase().includes(term);
-
-  let visibleCount = 0;
-
-  if (currentFilterTag === 'all') {
-    state.tags.forEach(tag => {
-      const items = state.catalog.filter(i => i.tag === tag && matches(i));
-      if (items.length === 0) return;
-      visibleCount += items.length;
-
-      const label = document.createElement('div');
-      label.className = 'section-label';
-      label.textContent = tag;
-      groups.appendChild(label);
-
-      const ul = document.createElement('ul');
-      ul.className = 'list';
-      items.forEach((item, idx) => ul.appendChild(makeItemRow(item, idx === 0, idx === items.length - 1)));
-      groups.appendChild(ul);
-    });
-  } else {
-    const items = state.catalog.filter(i => i.tag === currentFilterTag && matches(i));
-    visibleCount = items.length;
-    if (items.length) {
-      const ul = document.createElement('ul');
-      ul.className = 'list';
-      items.forEach((item, idx) => ul.appendChild(makeItemRow(item, idx === 0, idx === items.length - 1)));
-      groups.appendChild(ul);
-    }
-  }
-
-  if (visibleCount === 0) {
-    groups.style.display = 'none';
-    empty.style.display = 'block';
-    empty.textContent = term ? '一致する品物が見つかりません。' : 'このタグの品物はまだありません。';
-  } else {
-    groups.style.display = 'block';
-    empty.style.display = 'none';
-  }
 }
 
 function deleteCatalogItem(id) {
@@ -705,12 +452,9 @@ function deleteCatalogItem(id) {
 
 function addCatalogItem() {
   const input = document.getElementById('catalogInput');
-  const tagSelect = document.getElementById('catalogTagSelect');
   const name = input.value.trim();
   if (!name) return;
-  let tag = tagSelect.value;
-  if (!tag || tag === '__new__') tag = state.tags[0] || 'その他';
-  state.catalog.push({ id: uid(), name, selected: false, tag });
+  state.catalog.push({ id: uid(), name, selected: false });
   input.value = '';
   save();
   renderCatalog();
@@ -850,7 +594,7 @@ function escapeHtml(str) {
 load();
 renderCatalog();
 renderShop();
+initCapability();
 </script>
 </body>
 </html>
-
